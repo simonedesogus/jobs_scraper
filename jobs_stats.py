@@ -308,7 +308,7 @@ def read_stackoverflow(occ_vect, companies, num_jobs):
                     match = re.search(regex, str(job_body)).group(0)
                     company = match.split("|")[0][15:].strip()
                     position = match.split("|")[1].strip()
-        
+  
                     #Skips job posting that I already scanned before
                     #Assumption: Companies post the job position with the same title in different job websites
                     if(company in companies):
@@ -357,7 +357,23 @@ num_jobs = 0
 #occ_vect, companies, num_jobs = stats(skills, companies, occ_vect, num_jobs, "./Data/jobs_data_github_jobs.txt")
 #Stackoverflow
 occ_vect, companies, total_jobs = read_stackoverflow(occ_vect, companies, num_jobs)
-print(companies)
+
+def test_companies():
+    """
+    Due to a large number of companies or positions with non standard characters,
+    this function has the purpose to show that the companies dictionary still works and
+    only the terminal which by default prints ASCII has trouble printing the dictionary.
+    """
+
+    with open("./Text.txt",'w+',encoding='utf-8') as fw:
+        for company in companies.keys():
+            fw.write(str(company))
+            fw.write("=")
+            for position in companies[company]:
+                fw.write(str(position))
+                fw.write("\t")
+            fw.write("\n")
+
 #print_stats(occ_vect, total_jobs)
 
 #TODO: find the most used tags that I don't have in my dictionary
