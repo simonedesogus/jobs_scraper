@@ -275,7 +275,7 @@ def dump_stackoverflow():
     
         page_numb += 1
 
-def read_stackoverflow(occ_vect, num_jobs):
+def read_stackoverflow(occ_vect, companies, num_jobs):
     """
     Reads the dumped stack_overflow files and builds the occurrence vector.
     Returns the occurrence vector and the total number of jobs scanned.
@@ -285,6 +285,8 @@ def read_stackoverflow(occ_vect, num_jobs):
     page_numb = 1
     total_jobs = num_jobs
 
+    #This while(true) try except break is used because I don't know how many files I have
+    #to scan.
     while(True):
 
         filename = base_filename + str(page_numb)
@@ -293,26 +295,51 @@ def read_stackoverflow(occ_vect, num_jobs):
             with open(filename, 'r', encoding='utf-8') as fr:
                 content = fr.read()
                 soup = BeautifulSoup(content, "html.parser")
-                job_tags = soup.findAll(name='a', attrs={'class':'post-tag job-link no-tag-menu'})
-                jobs_title = soup.findAll(name='a', attrs={'class':'s-link s-link__visited job-link'})
+                
+                #jobs_title = soup.findAll(name='a', attrs={'class':'s-link s-link__visited job-link'})
+                jobs_title = soup.findAll(name='span', attrs={'class':'fav-toggle ps-absolute l16 c-pointer js-fav-toggle'})
+                
                 total_jobs += len(jobs_title)
+                regex = r'(data-ga-label=")(.* data-href=")'
+                
+                jobs_body = soup.findAll(name='div', attrs={'class':'-job-summary'})
+                
+                for job_body in jobs_body:
+                    match = re.search(regex, str(job_body)).group(0)
+                    company = match.split("|")[0][15:].strip()
+                    position = match.split("|")[1].strip()
+        
+                    #Skips job posting that I already scanned before
+                    #Assumption: Companies post the job position with the same title in different job websites
+                    if(company in companies):
+                        if(position in companies[company]):
+                            continue
+                        else:
+                            companies[company].append(position)
+                    else:
+                        companies[company] = []
+                        companies[company].append(position)
 
-                for job_tag in job_tags:
-                    #There are leading spaces/tabs that I have to remove
-                    job_tag_stripped = job_tag.text.strip()
-
-                    for key in skills.keys():
-                        for skill in skills[key]:
-                            if(job_tag_stripped == skill):
-                                occ_vect[key] += 1
-            
+                    soup_tags = BeautifulSoup(str(job_body), "html.parser")
+                    job_tags = soup_tags.findAll(name='a', attrs={'class':'post-tag job-link no-tag-menu'})
+                       
+                    for job_tag in job_tags:
+                        #There are leading spaces/tabs that I have to remove
+                        job_tag_stripped = job_tag.text.strip()
+                        
+                        #TODO: I can improve this by having another hash table having the reverse
+                        # of my dictionary. Going from O(n^2) to O(1)
+                        for key in skills.keys():
+                            for skill in skills[key]:
+                                if(job_tag_stripped == skill):
+                                    occ_vect[key] += 1
 
             page_numb += 1
         except:
             break
 
 
-    return occ_vect, total_jobs
+    return occ_vect, companies, total_jobs
 
 if(to_dump):
     jobs = gather_jobs_data(base_url_github_jobs)
@@ -327,11 +354,11 @@ for key in skills.keys():
 companies = {}
 num_jobs = 0
 #Github
-occ_vect, companies, num_jobs = stats(skills, companies, occ_vect, num_jobs, "./Data/jobs_data_github_jobs.txt")
+#occ_vect, companies, num_jobs = stats(skills, companies, occ_vect, num_jobs, "./Data/jobs_data_github_jobs.txt")
 #Stackoverflow
-occ_vect, total_jobs = read_stackoverflow(occ_vect, num_jobs)
-
-print_stats(occ_vect, total_jobs)
+occ_vect, companies, total_jobs = read_stackoverflow(occ_vect, companies, num_jobs)
+print(companies)
+#print_stats(occ_vect, total_jobs)
 
 #TODO: find the most used tags that I don't have in my dictionary
 #TODO: add more websites but check if the job postings are different
